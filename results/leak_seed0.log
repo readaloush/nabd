@@ -1,0 +1,28 @@
+intra_patient 72465 8051 20129
+  ep0 23s val acc 0.9461 macroF1 0.608
+  ep1 20s val acc 0.9142 macroF1 0.726
+  ep2 21s val acc 0.9716 macroF1 0.813
+  ep3 22s val acc 0.9783 macroF1 0.884
+  ep4 21s val acc 0.9765 macroF1 0.869
+  ep5 22s val acc 0.9796 macroF1 0.862
+  ep6 20s val acc 0.9776 macroF1 0.865
+  ep7 19s val acc 0.9848 macroF1 0.914
+  ep8 20s val acc 0.9807 macroF1 0.907
+  ep9 19s val acc 0.9878 macroF1 0.919
+  ep10 19s val acc 0.9860 macroF1 0.908
+  ep11 19s val acc 0.9872 macroF1 0.916
+intra_patient acc 0.9872 {'N': (0.991, 0.996), 'S': (0.912, 0.902), 'V': (0.973, 0.963), 'F': (0.897, 0.64)}
+inter_patient 41992 8985 49668
+  ep0 12s val acc 0.9469 macroF1 0.493
+  ep1 12s val acc 0.9469 macroF1 0.493
+  ep2 12s val acc 0.9469 macroF1 0.493
+  ep3 11s val acc 0.9497 macroF1 0.522
+  ep4 12s val acc 0.9533 macroF1 0.547
+  ep5 12s val acc 0.9499 macroF1 0.520
+  ep6 12s val acc 0.9560 macroF1 0.567
+  ep7 12s val acc 0.9580 macroF1 0.582
+  ep8 14s val acc 0.9534 macroF1 0.548
+  ep9 13s val acc 0.9545 macroF1 0.556
+  ep10 12s val acc 0.9539 macroF1 0.552
+  ep11 13s val acc 0.9537 macroF1 0.550
+inter_patient acc 0.8307 {'N': (0.859, 0.954), 'S': (0.162, 0.094), 'V': (0.919, 0.664), 'F': (0.023, 0.004)}

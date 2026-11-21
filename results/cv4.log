@@ -1,0 +1,5 @@
+v4_ctx2s fold 0 done
+v4_ctx2s fold 1 done
+v4_ctx2s fold 2 done
+v4_ctx2s fold 3 done
+v4_ctx2s OOF acc 0.8861 macroF1 0.484 {'N': (0.903, 0.986), 'S': (0.415, 0.18), 'V': (0.89, 0.52), 'F': (0.08, 0.089)}

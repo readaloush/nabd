@@ -1,0 +1,5 @@
+v2_seed10 fold 0 done
+v2_seed10 fold 1 done
+v2_seed10 fold 2 done
+v2_seed10 fold 3 done
+v2_seed10 OOF acc 0.8812 macroF1 0.514 {'N': (0.892, 0.985), 'S': (0.478, 0.293), 'V': (0.932, 0.463), 'F': (0.118, 0.164)}

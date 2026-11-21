@@ -1,0 +1,15 @@
+v1_base fold 0 done
+v1_base fold 1 done
+v1_base fold 2 done
+v1_base fold 3 done
+v1_base OOF acc 0.8091 macroF1 0.42 {'N': (0.816, 0.98), 'S': (0.408, 0.165), 'V': (0.917, 0.373), 'F': (0.048, 0.018)}
+v2_tpl_rr6 fold 0 done
+v2_tpl_rr6 fold 1 done
+v2_tpl_rr6 fold 2 done
+v2_tpl_rr6 fold 3 done
+v2_tpl_rr6 OOF acc 0.8947 macroF1 0.524 {'N': (0.911, 0.983), 'S': (0.474, 0.323), 'V': (0.883, 0.54), 'F': (0.155, 0.07)}
+v3_tpl_rr6_w1 fold 0 done
+v3_tpl_rr6_w1 fold 1 done
+v3_tpl_rr6_w1 fold 2 done
+v3_tpl_rr6_w1 fold 3 done
+v3_tpl_rr6_w1 OOF acc 0.8465 macroF1 0.493 {'N': (0.857, 0.989), 'S': (0.607, 0.149), 'V': (0.839, 0.548), 'F': (0.357, 0.096)}
