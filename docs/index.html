@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nabd · heartbeat classification tested on patients it has never seen</title>
+<meta name="description" content="A small 1-D CNN labels every heartbeat in an ECG, running in your browser, evaluated on patients kept out of training.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFF6F4; --minor:#F7D5D0; --major:#EDA79F; --ink:#1F1A1C; --muted:#6E6266; --rule:#E9CFCB;
+  --N:#5E5559; --S:#B86E00; --V:#6A2FB5; --F:#00776B; --miss:#C1121F; --card:#FFFFFF;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 "Public Sans",system-ui,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+header{padding:44px 0 8px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.name{font:700 2.1rem/1 "Spectral",serif;letter-spacing:-.01em}
+.name span{font-weight:400;color:var(--muted);margin-left:6px}
+header nav{margin-left:auto;font-size:.95rem}
+header nav a{color:var(--ink);margin-left:18px;text-decoration-color:var(--major);text-underline-offset:3px}
+h1{font:600 clamp(1.7rem,3.2vw,2.5rem)/1.15 "Spectral",serif;margin:26px 0 10px;max-width:24ch;letter-spacing:-.01em}
+.lead{max-width:68ch;color:#3b3236;margin:0 0 26px}
+.patients{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.patients button{font:500 .95rem "Public Sans",sans-serif;border:1px solid var(--major);background:transparent;color:var(--ink);padding:7px 13px;border-radius:3px;cursor:pointer}
+.patients button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.patients button:focus-visible,.toggle input:focus-visible{outline:3px solid var(--S);outline-offset:2px}
+.strip{background:var(--card);border:1px solid var(--rule);padding:14px 14px 6px;position:relative}
+.striphead{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:baseline;margin:0 2px 8px}
+.striphead b{font:600 1.15rem "Spectral",serif}
+.striphead .note{color:var(--muted)}
+.striphead .state{margin-left:auto;color:var(--muted);font-size:.88rem}
+canvas.row{display:block;width:100%;margin:0 0 6px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.9rem;color:var(--muted);margin:10px 2px 4px}
+.legend i{display:inline-block;font:700 .95rem "Public Sans";font-style:normal;margin-right:5px}
+.legend .ring{display:inline-block;width:12px;height:12px;border:2px solid var(--miss);border-radius:50%;vertical-align:-1px;margin-right:5px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:.82rem;line-height:1.45;padding:8px 10px;border-radius:3px;display:none;z-index:5;min-width:170px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;margin:16px 0 0;border-top:1px solid var(--rule)}
+.summary div{padding:12px 4px 2px}
+.summary b{display:block;font:600 1.6rem/1.1 "Spectral",serif}
+.summary span{color:var(--muted);font-size:.9rem}
+section{padding:48px 0 0}
+section h2{font:600 1.55rem/1.25 "Spectral",serif;margin:0 0 10px}
+section p{max-width:70ch}
+table{border-collapse:collapse;width:100%;max-width:860px;font-size:.95rem;font-variant-numeric:tabular-nums;margin:12px 0 6px;background:var(--card)}
+th,td{text-align:right;padding:8px 12px;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-weight:600;border-bottom:2px solid var(--ink)}
+td.hot{color:var(--miss);font-weight:600}
+.small{font-size:.88rem;color:var(--muted)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:36px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}header nav{margin-left:0}header nav a{margin:0 16px 0 0}}
+footer{padding:54px 0 60px;color:var(--muted);font-size:.88rem}
+footer a{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="name">Nabd<span lang="ar">نبض</span></div>
+  <nav><a href="https://github.com/readaloush/nabd">Code and results</a><a href="https://readaloush.com">readaloush.com</a></nav>
+</header>
+
+<h1>Every heartbeat labelled, on patients the model has never seen</h1>
+<p class="lead">A small neural network reads the ECG beat by beat and marks each one as normal (N), supraventricular ectopic (S), ventricular ectopic (V) or fusion (F). It runs in this page. The five patients below were kept out of training entirely, so what you see is how it behaves on a new person, not on a heartbeat it has already met.</p>
+
+<div class="patients" id="patients" role="group" aria-label="Choose a test patient"></div>
+
+<div class="strip" id="strip">
+  <div class="striphead"><b id="title">Loading…</b><span class="note" id="note"></span><span class="state" id="state">Loading the model…</span></div>
+  <div id="rows"></div>
+  <div class="legend">
+    <span><i style="color:var(--N)">N</i>normal</span>
+    <span><i style="color:var(--S)">S</i>supraventricular ectopic</span>
+    <span><i style="color:var(--V)">V</i>ventricular ectopic</span>
+    <span><i style="color:var(--F)">F</i>fusion</span>
+    <span><span class="ring"></span>model disagrees with the cardiologists; their label is shown underneath</span>
+  </div>
+  <div class="tip" id="tip"></div>
+</div>
+<div class="summary" id="summary"></div>
+<p class="small">MIT-BIH Arrhythmia Database, lead MLII, 60-second strips at 25 mm/s and 10 mm/mV. Labels under the trace are the database’s cardiologist annotations. Research and education only, not for diagnosis.</p>
+
+<section id="why">
+  <h2>Why this is not 99%</h2>
+  <div class="cols">
+    <div>
+      <p>Most published heartbeat classifiers on this database report 98–99% accuracy. They shuffle all beats together and split them at random, so the test set is full of beats from patients the model trained on, often the beat right next to one in the training set.</p>
+      <p>The same model, trained the same way, gives both numbers below. Only the split changes.</p>
+    </div>
+    <div>
+      <table>
+        <thead><tr><th>3 seeds, mean</th><th>Beats shuffled</th><th>New patients</th></tr></thead>
+        <tbody>
+          <tr><td>Accuracy</td><td>98.8%</td><td>90.8%</td></tr>
+          <tr><td>V found (sensitivity)</td><td>98.1%</td><td>93.0%</td></tr>
+          <tr><td>V correct when flagged</td><td>96.7%</td><td>81.0%</td></tr>
+          <tr><td>S found (sensitivity)</td><td>94.7%</td><td class="hot">20.1%</td></tr>
+          <tr><td>F found (sensitivity)</td><td>91.3%</td><td class="hot">1.9%</td></tr>
+        </tbody>
+      </table>
+      <p class="small">New patients: trained on the 22 patients of DS1, tested once on the 22 patients of DS2 (de Chazal et al., 2004).</p>
+    </div>
+  </div>
+</section>
+
+<section id="hard">
+  <h2>Where it fails, and why</h2>
+  <div class="cols">
+    <div>
+      <p>Ventricular beats transfer well: on new patients the model finds 93% of them, against 77.7% for the classic de Chazal et al. (2004) system on the same split. Supraventricular beats do not.</p>
+      <p>One patient explains most of it. Three quarters of the S beats in the test patients (1,381 of 1,836) come from record 232, where most beats are atrial premature beats. The model compares each beat with the patient’s own recent beats, which assumes that a patient’s typical beat is normal. In record 232 the typical beat is the abnormal one, so it finds only 4% of them. On the other test patients it finds 53%.</p>
+    </div>
+    <div>
+      <p>This was found after the one look at the test patients, so the model was not changed to fit record 232: tuning on the test set is the mistake this project measures. Record 232 is included in the strips above so you can see it happen.</p>
+      <p>Fusion beats are close to hopeless across patients: 372 of the 414 F beats in the training patients come from a single record, so the model has barely seen a second person’s fusion beat.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How it works</h2>
+  <p>Each beat is cut from 0.25 s before to 0.46 s after its R peak (256 samples at 360 Hz). The network sees two versions of it: the beat itself, and the beat minus the median of the patient’s previous 20 beats, which shows how it differs from that patient’s usual shape. It also gets six RR-interval features comparing the time to the previous and next beat with the patient’s recent and longer-term average. A 1-D CNN with about 50,000 parameters, three copies trained with different seeds and averaged, makes the call. All design choices were made by 4-fold cross-validation over the training patients only.</p>
+  <p class="small">In this page the beats’ R-peak positions come from the database annotations and the 0.5–40 Hz band-pass filter was applied in advance; the two-channel input, the RR features and the network itself are computed in your browser with ONNX Runtime Web.</p>
+</section>
+
+<footer>Built by <a href="https://readaloush.com">Read Alalloş</a>. Data: MIT-BIH Arrhythmia Database (Moody &amp; Mark, 2001), PhysioNet, ODC-By. Not a medical device.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script>
+const CL = ["N","S","V","F","Q"], COL = {N:"--N",S:"--S",V:"--V",F:"--F",Q:"--N"};
+const PRE = 90, POST = 166, WIN = PRE + POST;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = id => document.getElementById(id);
+let session, strips, cur = 0, beatsCache = {};
+
+function decode(b64) { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  const v = new Int16Array(u.buffer), x = new Float32Array(v.length); for (let i = 0; i < v.length; i++) x[i] = v[i] / 1000; return x; }
+const mean = (a, lo, hi) => { let s = 0; for (let i = lo; i <= hi; i++) s += a[i]; return s / (hi - lo + 1); };
+
+// same features as training: running-median beat over the previous 20 beats, and RR intervals vs the patient's own past
+function features(st) {
+  const x = decode(st.sig), r = st.r, n = r.length, fs = st.fs;
+  const raw = r.map(p => x.subarray(p - PRE, p + POST));
+  const rr = st.rrPrior.concat(r.slice(1).map((p, i) => (p - r[i]) / fs)), off = st.rrPrior.length - 1;
+  const items = [];
+  for (let j = 0; j < n - 1; j++) {
+    if (r[j] < st.show || j < 1) continue;
+    const lo = Math.max(0, j - 20), k = j - lo, tpl = new Float32Array(WIN), col = new Float32Array(k);
+    for (let t = 0; t < WIN; t++) { for (let q = 0; q < k; q++) col[q] = raw[lo + q][t]; col.sort();
+      tpl[t] = k % 2 ? col[(k - 1) / 2] : (col[k / 2 - 1] + col[k / 2]) / 2; }
+    let m = 0; for (let t = 0; t < WIN; t++) m += tpl[t]; m /= WIN;
+    let v = 0; for (let t = 0; t < WIN; t++) v += (tpl[t] - m) ** 2; const sc = Math.sqrt(v / WIN) + 1e-3;
+    const w = new Float32Array(2 * WIN);
+    for (let t = 0; t < WIN; t++) { w[t] = (raw[j][t] - m) / sc; w[WIN + t] = (raw[j][t] - tpl[t]) / sc; }
+    const p = off + j, pre = rr[p], post = rr[p + 1];
+    const local = mean(rr, Math.max(0, p - 9), p), long_ = mean(rr, Math.max(0, p - 199), p);
+    items.push({j, w, f: [pre, post, pre / local, post / pre, pre / long_, local / long_]});
+  }
+  return {x, items};
+}
+
+async function classify(i) {
+  if (beatsCache[i]) return beatsCache[i];
+  const st = strips[i], {x, items} = features(st), n = items.length;
+  const W = new Float32Array(n * 2 * WIN), F = new Float32Array(n * 6);
+  items.forEach((it, k) => { W.set(it.w, k * 2 * WIN); F.set(it.f, k * 6); });
+  const t0 = performance.now();
+  const out = await session.run({beat: new ort.Tensor("float32", W, [n, 2, WIN]), rr: new ort.Tensor("float32", F, [n, 6])});
+  const ms = performance.now() - t0, P = out.probs.data;
+  const beats = items.map((it, k) => { const p = Array.from(P.slice(5 * k, 5 * k + 5)); return {j: it.j, pos: st.r[it.j], y: st.y[it.j], p, a: p.indexOf(Math.max(...p)), ref: st.ref[it.j]}; });
+  return beatsCache[i] = {x, beats, ms};
+}
+
+function draw(i, res) {
+  const st = strips[i], rows = $("rows"); rows.innerHTML = "";
+  const fs = st.fs, secPerRow = innerWidth < 700 ? 5 : 10, nRows = Math.ceil(60 / secPerRow), dpr = devicePixelRatio || 1;
+  const width = rows.clientWidth, mm = width / (secPerRow * 25), H = Math.round(mm * 42);
+  for (let k = 0; k < nRows; k++) {
+    const c = document.createElement("canvas"); c.className = "row"; c.width = width * dpr; c.height = H * dpr; c.style.height = H + "px";
+    rows.appendChild(c); const g = c.getContext("2d"); g.scale(dpr, dpr);
+    for (let gx = 0, q = 0; gx <= width + 0.5; gx += mm, q++) { g.strokeStyle = css(q % 5 ? "--minor" : "--major"); g.lineWidth = q % 5 ? .5 : .9; g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, H); g.stroke(); }
+    for (let gy = 0, q = 0; gy <= H + 0.5; gy += mm, q++) { g.strokeStyle = css(q % 5 ? "--minor" : "--major"); g.lineWidth = q % 5 ? .5 : .9; g.beginPath(); g.moveTo(0, gy); g.lineTo(width, gy); g.stroke(); }
+    const s0 = st.show + k * secPerRow * fs, s1 = Math.min(s0 + secPerRow * fs, st.show + 60 * fs), base = H * 0.45, px = width / (secPerRow * fs);
+    g.strokeStyle = css("--ink"); g.lineWidth = 1.3; g.lineJoin = "round"; g.beginPath();
+    for (let s = s0; s < s1 && s < res.x.length; s++) { const X = (s - s0) * px, Y = base - res.x[s] * 10 * mm; s === s0 ? g.moveTo(X, Y) : g.lineTo(X, Y); }
+    g.stroke();
+    g.textAlign = "center"; g.textBaseline = "middle";
+    for (const b of res.beats) {
+      if (b.pos < s0 || b.pos >= s1) continue;
+      const X = (b.pos - s0) * px, lab = CL[b.a], wrong = b.a !== b.y;
+      g.font = `700 ${Math.max(11, mm * 3.2)}px "Public Sans"`; g.fillStyle = css(COL[lab]); g.fillText(lab, X, mm * 3);
+      if (wrong) { g.strokeStyle = css("--miss"); g.lineWidth = 1.6; g.beginPath(); g.arc(X, mm * 3, Math.max(8, mm * 2.6), 0, 7); g.stroke();
+        g.font = `600 ${Math.max(10, mm * 2.6)}px "Public Sans"`; g.fillStyle = css("--muted"); g.fillText(CL[b.y], X, H - mm * 2.5); }
+      b.hit = {k, X, H};
+    }
+    c.addEventListener("mousemove", e => hover(e, c, k, res)); c.addEventListener("mouseleave", () => $("tip").style.display = "none");
+  }
+}
+
+function hover(e, c, k, res) {
+  const rect = c.getBoundingClientRect(), mx = e.clientX - rect.left; let best = null, d = 1e9;
+  for (const b of res.beats) if (b.hit && b.hit.k === k && Math.abs(b.hit.X - mx) < d) { d = Math.abs(b.hit.X - mx); best = b; }
+  const tip = $("tip"); if (!best || d > 18) { tip.style.display = "none"; return; }
+  tip.innerHTML = `Model: <b>${CL[best.a]}</b> · cardiologists: <b>${CL[best.y]}</b><br>` + ["N","S","V","F"].map((l, q) => `${l} ${(100 * best.p[q]).toFixed(1)}%`).join(" · ");
+  const sr = $("strip").getBoundingClientRect(); tip.style.display = "block";
+  tip.style.left = Math.min(e.clientX - sr.left + 12, sr.width - 190) + "px"; tip.style.top = (rect.top - sr.top + 8) + "px";
+}
+
+function summarize(i, res) {
+  const b = res.beats, ok = b.filter(q => q.a === q.y).length, cnt = (arr, key) => CL.slice(0, 4).map(l => arr.filter(q => CL[q[key]] === l).length);
+  const m = cnt(b, "a"), c = cnt(b, "y");
+  const fmt = a => a.map((v, q) => v ? `${v} ${CL[q]}` : "").filter(Boolean).join(", ");
+  $("summary").innerHTML = `<div><b>${ok} of ${b.length}</b><span>beats agree with the cardiologists</span></div>
+    <div><b>${fmt(m) || "–"}</b><span>model’s labels</span></div><div><b>${fmt(c) || "–"}</b><span>cardiologists’ labels</span></div>`;
+}
+
+async function show(i) {
+  cur = i; [...$("patients").children].forEach((bt, q) => bt.setAttribute("aria-pressed", q === i));
+  const st = strips[i]; $("title").textContent = `Patient ${st.rec}`; $("note").textContent = st.note; $("state").textContent = "Classifying…";
+  const res = await classify(i); draw(i, res); summarize(i, res);
+  $("state").textContent = `${res.beats.length} beats classified in ${Math.max(1, Math.round(res.ms))} ms on this device`;
+}
+
+(async () => {
+  strips = await (await fetch("data/strips.json", {cache: "no-cache"})).json();
+  $("patients").innerHTML = strips.map((s, i) => `<button type="button" aria-pressed="false">Patient ${s.rec}</button>`).join("");
+  [...$("patients").children].forEach((b, i) => b.onclick = () => show(i));
+  ort.env.wasm.numThreads = 1;
+  session = await ort.InferenceSession.create("nabd.onnx", {executionProviders: ["wasm"]});
+  await show(0);
+  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => beatsCache[cur] && draw(cur, beatsCache[cur]), 150); });
+})().catch(e => { $("state").textContent = "Could not start: " + e.message; console.error(e); });
+</script>
+</body>
+</html>
